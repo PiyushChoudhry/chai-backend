@@ -10,12 +10,7 @@ export {asyncHandler}
 
 
 
-<<<<<<< HEAD
-// second method:
-=======
-// second method: 
->>>>>>> 428e38d9f5d088b68c1048f1011a42baec08a1e0
-
+// second method:  
 // const asyncHandler = () => {}
 // const asyncHandler = (func) => {() => {}}
 // const asyncHandler = (func) => {async () => {}}
