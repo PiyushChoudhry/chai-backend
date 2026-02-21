@@ -10,6 +10,7 @@ export {asyncHandler}
 
 
 
+// second method:
 
 // const asyncHandler = () => {}
 // const asyncHandler = (func) => {() => {}}
