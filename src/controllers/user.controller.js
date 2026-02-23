@@ -19,8 +19,9 @@ const registerUser = asyncHandler( async (req, res) => {
 
     // 1. 
     const {fullName, email, username, password} = req.body // if data is coming from "form" or "json" then, it will found in "req.body"
-    console.log("email: ", email);
-
+    // console.log("email: ", email);
+    // console.log("req.body: ", req.body);
+ 
     // 2.
     // if(fullName === ""){
     //     throw new ApiError(400, "fullName is required")
@@ -33,7 +34,7 @@ const registerUser = asyncHandler( async (req, res) => {
     }
 
     // 3.
-    const existedUser = User.findOne({
+    const existedUser = await User.findOne({
         $or: [{ username }, { email }]
     })
 
@@ -41,10 +42,18 @@ const registerUser = asyncHandler( async (req, res) => {
         throw new ApiError(409, "User with email or username already exists")
     }
 
+    
     // 4.
     const avatarLocalPath = req.files?.avatar[0]?.path;
-    const coverImageLocalPath = req.files?.coverImage[0]?.path;
+    // const coverImageLocalPath = req.files?.coverImage[0]?.path; // if it is not given then it will raise like: "TypeError: Cannot read properties of undefined"
 
+    let coverImageLocalPath;
+    if(req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0){
+        coverImageLocalPath = req.files.coverImage[0].path;
+    }
+    
+    // console.log("req.files: ", req.files);
+    
     if(!avatarLocalPath){
         throw new ApiError(400, "Avatar file is required")
     }
@@ -61,7 +70,7 @@ const registerUser = asyncHandler( async (req, res) => {
     const user = await User.create({
         fullName,
         avatar: avatar.url,
-        coverImage: coverImage?.url || "",
+        coverImage: coverImage?.url || "", // because we have already checked for avatar
         email,
         password,
         username: username.toLowerCase()
