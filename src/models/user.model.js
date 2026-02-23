@@ -58,7 +58,7 @@ userSchema.pre("save", async function (next) { // encryption takes times so use 
 
     if(!this.isModified("password")) return next() // if this condition doesn't exist then it will change the password everytime when you save or change something, for eg: avatar
 
-    this.password = bcrypt.hash(this.password, 10) // here 10 is rounds (salt)
+    this.password = await bcrypt.hash(this.password, 10) // here 10 is rounds (salt)
     next()
 })  
 
