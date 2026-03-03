@@ -68,15 +68,16 @@ userSchema.methods.isPasswordCorrect = async function(password){
 }
 
 userSchema.methods.generateAccessToken = function(){ // it is JWT, no need to write "async", and no problem if you do
-    return jwt.sign(
-        {
+    return jwt.sign( // creates JWT
+        { // payload = data
+            // this is not encrypted, therefore never put password, refresh token or other sensitive information
             _id: this._id,
             email: this.email,
             username: this.username,
             fullName: this.fullName,
         },
-        process.env.ACCESS_TOKEN_SECRET,
-        {
+        process.env.ACCESS_TOKEN_SECRET, // secret
+        { // expiry
             expiresIn: process.env.ACCESS_TOKEN_EXPIRY
         }
     )

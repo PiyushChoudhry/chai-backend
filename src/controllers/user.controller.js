@@ -4,6 +4,23 @@ import { User } from "../models/user.model.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/ApiResponse.js";
 
+
+const generateAccessAndRefreshTokens = async(userId) => { // asyncHandler is not required here because we are not handling the web requests, it is our internal method which is used here internally only
+    try {
+        const user = await User.findById(userId);
+        const accessToken = user.generateAccessToken();
+        const refreshToken = user.generateRefreshToken();
+    
+        user.refreshToken = refreshToken
+        await user.save({ validateBeforeSave: false }) // so you don't have to pass password, as mongoose's model will kick in and they find password is required field.
+
+        return {accessToken, refreshToken}
+    
+    } catch (error) {
+        throw new ApiError(500, "Something went wrong while generating refresh and access tokens")
+    }
+}
+
 const registerUser = asyncHandler( async (req, res) => {
     /*
         1. get user details from frontend
@@ -93,5 +110,104 @@ const registerUser = asyncHandler( async (req, res) => {
 
 } )
 
+const loginUser = asyncHandler( async (red, res) => {
+    /*
+        1. req body -> data
+        2. username or email
+        3. find the user
+        4. password check
+        5. access and refresh token
+        6. send secure cookies
+        7. send res about successful login
+    */
 
-export { registerUser }
+
+        // 1. 
+        const {email, username, password} = req.body
+
+        // 2.
+        if(!username || !email){
+            throw new ApiError(400, "username or email is required")
+        }
+
+        // 3.
+
+        // const user = await User.findOne({email}) // finding by email only
+
+        // const user = await User.findOne({username}) // finding by username only
+
+        // finding by either username or email:
+        const user = await User.findOne({
+            $or: [{username}, {email}]
+        })
+
+        if(!user){
+            throw new ApiError(404, "User does not exist")
+        }
+
+        // 4.
+        const isPasswordValid = await user.isPasswordCorrect(password) // "user" is used here, not "User" because "User" is object of MongoDB's mongoose and only have mongoose's methods not users (us) crearted. therefore our created methods will be access only by "user"
+
+        if(!isPasswordValid){
+            throw new ApiError(401, "Invalid user credentials")
+        }
+
+        //  5. 
+        const {accessToken, refreshToken} = await generateAccessAndRefreshTokens(user._id)
+        
+        const loggedInUser = await User.findById(user._id).select("-password -refreshToken") // if calling DB is not expensive query, else simple update this object
+        
+        // 6. 
+        const options = { // by default cookies can be modified by all at frontend, but when httpOnly and secure are true they can be modified by server only, although it can be viewed at frontend
+            httpOnly: true,
+            secure: true
+        }
+
+        return res
+        .status(200)
+        .cookie("accessToken", accessToken, options)
+        .cookie("refreshToken", refreshToken, options)
+        .json(
+            new ApiResponse(
+                200, // status code
+                { // data
+                    user: loggedInUser, accessToken, refreshToken // when user wants to save accessToken and refreshToken in its local storage, or developing a mobile applications because cookies will not set there, although it is not best practice
+                },
+                "User Logged In Successfully" // message
+            )
+        )
+})
+
+const logoutUser = asyncHandler(async(req, res) => {
+    // we have access of "req.body, req.cookie, req.body" here because of a middleware
+
+    await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $set: {
+                refreshToken: undefined
+            }
+        },
+        {
+            new: true
+        }
+    )
+
+    const options = {
+            httpOnly: true,
+            secure: true
+    }
+
+    return res
+    .status(200)
+    .clearCookie("accessToken", options)
+    .clearCookie("refreshToken", options)
+    .json(new ApiResponse(200, {}, "User Logged Out"))
+
+})
+
+export { 
+    registerUser, 
+    loginUser, 
+    logoutUser 
+}
